@@ -1,3 +1,8 @@
 {
-	packages={},
+	packages={
+		test={
+			addr = "https://raw.githubusercontent.com/techno9487/CCPackage/master/repo/test.package",
+			type="github",
+		},
+	},
 }
