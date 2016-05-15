@@ -4,6 +4,8 @@ repos = {}
 argList = {}
 argList["add"] = addRepo
 argList["search"] = Search
+argList["install"] = install
+argList["remove-repo"] = removeRepo
 
 function addRepo()
 	if #args == 3 then
@@ -43,6 +45,49 @@ function Search()
 		end
 	else
 		print("Usage: pkg search <term>")
+	end
+end
+
+function install()
+	if #args == 2 then
+		query = args[2]
+		for key,value in pairs(repos) do
+			result = http.get(value)
+			if result == nil then
+				print("Failed to get repo: "..key)
+			else
+				data = textutils.unserialise(result.readAll())
+				if data == nil then
+					print(key.." can't read manifest")
+				else
+					for k,v in pairs(data["packages"]) do
+						if string.match(k,query) then
+							if v["type"] == "github" then
+								fileResult = http.get(v["addr"])
+								if fileResult == nil then
+									print("Failed to get file, connection error")
+								else
+									f = fs.open(k,"w")
+									f.write(fileResult.readAll())
+									f.close()
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	else
+		print("Usage: pkg install <package>")
+	end	
+end
+
+function removeRepo()
+	if #args == 2 then
+		repos[args[2]] = nil
+		SaveList()
+	else
+		print("Usage: pkg remove-repo <name>")
 	end
 end
 
