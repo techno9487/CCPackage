@@ -1,4 +1,9 @@
-img;manifest;
+test/data;test/imgs/img;test/manifest;{
+  name = "Test Package",
+  version = 1,
+  author = "techno9487",
+  install = ".",
+}
 
 
 
