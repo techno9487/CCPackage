@@ -1,0 +1,67 @@
+args = { ... }
+repos = {}
+
+argList = {}
+argList["add"] = addRepo
+argList["search"] = Search
+
+function addRepo()
+	if #args == 3 then
+		name = args[2]
+		addr = args[3]
+		repos[name] = addr
+		SaveList()
+	else
+		print("Usage: pkg add <name> <address>")
+	end
+end
+
+function SaveList()
+	f = fs.open("pkg-list","w")
+	f.write(textutils.serialize(repos))
+	f.close()
+end
+
+function Search()
+	if #args == 2 then
+		query = args[2]
+		for key,value in pairs(repos) do
+			result = http.get(value)
+			if result == nil then
+				print("Failed to get repo: "..key)
+			end
+			data = textutils.unserialise(result.readAll())
+			if data == nil then
+				print(key.." can't read manifest")
+			else
+				for k,v in pairs(data["packages"]) do
+					if string.match(k,query) then
+						print(k)
+					end
+				end
+			end
+		end
+	else
+		print("Usage: pkg search <term>")
+	end
+end
+
+if fs.exists("pkg-list") then
+	f = fs.open("pkg-list","r")
+	repos = textutils.unserialize(f.readAll())
+	f.close()
+	if repos == nil then
+		repos = {}
+		print("error")
+	end	
+end	
+
+if #args > 0 then
+	if argList[args[1]] == nil then
+		print("invalid arg")
+	else
+		argList[args[1]]()
+	end
+else
+	print("more args")
+end
