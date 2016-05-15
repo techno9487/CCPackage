@@ -9,6 +9,7 @@ For refernce i have included the src for the example test package
 - `remove-repo <name>` removes repo with name `name`
 - `install <package>` install a package with name `package`
 - `create <folder>` creates a package from the specified folder
+- `decomp <package>` decomporeses the named package to the tmp dir
 
 **Troubleshooting**
 If you consistantly get and error printing to the console then it's probably because the package list file doesn't contain any repos, if this does ahppen to you please run the following command:
