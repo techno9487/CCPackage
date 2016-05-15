@@ -1,0 +1,6 @@
+manifest;{
+  name = "Test Package",
+  version = 1,
+  author = "techno9487",
+  install = ".",
+}
