@@ -1,3 +1,41 @@
+--Package File API
+function compress(folder)
+	files = fs.list(folder)
+	header = ""
+	data = ""
+	for _,file in pairs(files) do
+		me = fs.open(folder.."/"..file,"r")
+		if me == nil then
+			print("Failed to package: "..file)
+		else
+			header = header..file..";"
+			data = data..me.readAll()..string.char(3)
+			print(folder.."/"..file)
+		end
+		me.close()
+	end
+	header = header..string.char(3)
+	pkg = fs.open(folder..".pkg","w")
+	pkg.write(header..data)
+	pkg.close()
+end
+
+function decompress(data, path)
+	print("Extracting package to tmp folder...")
+	tmp = {}
+	for word in data:gmatch("([^"..string.char(3).."]+)") do
+		table.insert(tmp,word)
+	end
+	count = 2;
+	for file in tmp[1]:gmatch("([^;]+)") do
+		print("Extracting:"..file)
+		f = fs.open(path.."/"..file,"w")
+		f.write(tmp[0+count])
+		f.close()
+		count = count+1
+	end
+end
+
 args = { ... }
 repos = {}
 
@@ -6,6 +44,15 @@ argList["add"] = addRepo
 argList["search"] = Search
 argList["install"] = install
 argList["remove-repo"] = removeRepo
+argList["create"] = createPackage
+
+function createPackage()
+	if #args == 2 then
+		compress(args[2])
+	else
+		print("Usage: pkg create <folder>")
+	end
+end
 
 function addRepo()
 	if #args == 3 then
@@ -61,15 +108,33 @@ function install()
 					print(key.." can't read manifest")
 				else
 					for k,v in pairs(data["packages"]) do
-						if string.match(k,query) then
+						if k == query then
 							if v["type"] == "github" then
 								fileResult = http.get(v["addr"])
 								if fileResult == nil then
 									print("Failed to get file, connection error")
 								else
-									f = fs.open(k,"w")
-									f.write(fileResult.readAll())
-									f.close()
+									decompress(fileResult.readAll(),"tmp")
+									if fs.exists("tmp/manifest") then
+										man = fs.open("tmp/manifest","r")
+										data = textutils.unserialise(man.readAll())
+										man.close()
+										fs.delete("tmp/manifest")
+										if data ~= nil then
+											if data["install"] ~= nil then
+												for _,file in pairs(fs.list("tmp")) do
+													fs.copy("tmp/"..file,data["install"].."/"..file)
+													fs.delete("tmp/"..file)
+												end
+											else
+												print("no install path specified, error")
+											end
+										else
+											print("error reading manifest file, EXIT")
+										end
+									else
+										print("Failed to install no manifest file")
+									end
 								end
 							end
 						end
