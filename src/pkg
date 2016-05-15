@@ -1,16 +1,15 @@
 --Package File API
 function compress(folder)
-	files = fs.list(folder)
 	header = ""
 	data = ""
-	for _,file in pairs(files) do
-		me = fs.open(folder.."/"..file,"r")
-		if me == nil then
-			print("Failed to package: "..file)
-		else
+	for _,file in pairs(listAll(folder)) do
+		print("Compressing:"..file)
+		me = fs.open(file,"r")
+		if me ~= nil or fs.getSize(file) > 0 then
 			header = header..file..";"
 			data = data..me.readAll()..string.char(3)
-			print(folder.."/"..file)
+		else
+			print("Error compressing,"..file)
 		end
 		me.close()
 	end
@@ -36,15 +35,38 @@ function decompress(data, path)
 	end
 end
 
+--Walks a directory including all subdirectories
+function listAll(_path, _files)
+  local path = _path or ""
+  local files = _files or {}
+  for _, file in ipairs(fs.list(path)) do
+    local path = fs.combine(path, file)
+    if fs.isDir(path) then
+      listAll(path, files)
+    else
+      table.insert(files, path)
+    end
+  end
+  return files
+end
+
 args = { ... }
 repos = {}
 
+--CLI args list
 argList = {}
 argList["add"] = addRepo
 argList["search"] = Search
 argList["install"] = install
 argList["remove-repo"] = removeRepo
 argList["create"] = createPackage
+argList["decomp"] = decomp
+
+function decomp()
+	pkg = fs.open(args[2],"r")
+	decompress(pkg.readAll(),"tmp")
+	pkg.close()
+end
 
 function createPackage()
 	if #args == 2 then
@@ -115,25 +137,15 @@ function install()
 									print("Failed to get file, connection error")
 								else
 									decompress(fileResult.readAll(),"tmp")
-									if fs.exists("tmp/manifest") then
-										man = fs.open("tmp/manifest","r")
-										data = textutils.unserialise(man.readAll())
-										man.close()
-										fs.delete("tmp/manifest")
-										if data ~= nil then
-											if data["install"] ~= nil then
-												for _,file in pairs(fs.list("tmp")) do
-													fs.copy("tmp/"..file,data["install"].."/"..file)
-													fs.delete("tmp/"..file)
-												end
-											else
-												print("no install path specified, error")
-											end
-										else
-											print("error reading manifest file, EXIT")
-										end
+									path = ""
+									if(fs.exists("tmp/manifest")) then
+										path = "tmp"
+										RunInstall(path)
+									elseif fs.exists(fs.list("tmp")[1].."/manifest") then
+										path = "tmp/"..fs.list("tmp")[1]
+										RunInstall(path)
 									else
-										print("Failed to install no manifest file")
+										print("Can't find manifest file")
 									end
 								end
 							end
@@ -145,6 +157,23 @@ function install()
 	else
 		print("Usage: pkg install <package>")
 	end	
+end
+
+function RunInstall(path)
+	print("Tmp Path:"..path)
+	data = {}
+	man = fs.open(path.."/manifest","r")
+	data = textutils.unserialize(man.readAll())
+	man.close()
+	if data ~= nil then
+		fs.delete(path.."/manifest")
+		for _,f in pairs(listAll(path)) do
+			print("Installing:"..f:sub(path:len()+2))
+			fs.copy(f,data["install"].."/"..f:sub(path:len()+2))
+		end
+	else
+		print("Can't read manifest file")
+	end
 end
 
 function removeRepo()
